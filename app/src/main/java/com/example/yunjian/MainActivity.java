@@ -1,6 +1,5 @@
 package com.example.yunjian;
 
-import android.annotation.SuppressLint;
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -36,6 +35,10 @@ public class MainActivity extends AppCompatActivity {
     public String selectedBDAddress = "00:00:05:DB:69:20";
     private StatusBox statusBox;
     private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1001;
+    private static final String[] ANDROID_12_BT_PERMISSIONS = new String[]{
+            Manifest.permission.BLUETOOTH_CONNECT,
+            Manifest.permission.BLUETOOTH_SCAN
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,9 +73,8 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH_PERMISSIONS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasAndroid12BtPermissions()) {
+            ActivityCompat.requestPermissions(this, ANDROID_12_BT_PERMISSIONS, REQUEST_BLUETOOTH_PERMISSIONS);
             return false;
         }
 
@@ -108,9 +110,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void print(String bdAddress) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH_PERMISSIONS);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasAndroid12BtPermissions()) {
+            ActivityCompat.requestPermissions(this, ANDROID_12_BT_PERMISSIONS, REQUEST_BLUETOOTH_PERMISSIONS);
             Toast.makeText(this, "需要蓝牙权限以连接打印机", Toast.LENGTH_LONG).show();
             return;
         }
@@ -152,10 +153,25 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS &&
-                grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            listBluetoothDevice();
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+            if (allGranted) {
+                listBluetoothDevice();
+            } else {
+                Toast.makeText(this, "需要蓝牙权限以使用打印功能", Toast.LENGTH_LONG).show();
+            }
         }
+    }
+
+    private boolean hasAndroid12BtPermissions() {
+        return ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
     }
 
     private Bitmap drawableToBitmap(Drawable drawable) {
