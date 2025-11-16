@@ -34,6 +34,12 @@ public class StatusBox {
 
         timer = new Timer();
 
+        looperHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message msg) {
+                throw new RuntimeException();
+            }
+        };
         timerHandler = new Handler(msg -> {
             if (msg.what == 1 && timerTask != null) {
                 timerTask.cancel();
@@ -42,12 +48,6 @@ public class StatusBox {
             }
             return true;
         });
-        looperHandler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(Message msg) {
-                throw new RuntimeException();
-            }
-        };
     }
 
     public void show(String message) {
