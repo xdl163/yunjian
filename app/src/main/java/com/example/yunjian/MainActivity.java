@@ -1,6 +1,7 @@
 package com.example.yunjian;
 
 import android.annotation.SuppressLint;
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
@@ -8,7 +9,9 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
+import android.content.pm.PackageManager;
 import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
@@ -18,6 +21,7 @@ import android.widget.SimpleAdapter;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.res.ResourcesCompat;
 
 import java.util.ArrayList;
@@ -32,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     public static BluetoothAdapter myBluetoothAdapter;
     public String selectedBDAddress = "00:00:05:DB:69:20";
     private StatusBox statusBox;
+    private static final int REQUEST_BLUETOOTH_PERMISSIONS = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
         printButton.setOnClickListener(v -> print(selectedBDAddress));
     }
 
-    @SuppressLint("MissingPermission")
     public boolean listBluetoothDevice() {
         final List<Map<String, String>> list = new ArrayList<>();
         ListView listView = findViewById(R.id.listViewDevices);
@@ -64,12 +68,17 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH_PERMISSIONS);
+            return false;
+        }
+
         if (!myBluetoothAdapter.isEnabled()) {
             Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             startActivityForResult(enableBtIntent, 2);
         }
 
-        @SuppressLint("MissingPermission")
         Set<BluetoothDevice> pairedDevices = myBluetoothAdapter.getBondedDevices();
         if (pairedDevices.size() <= 0) {
             Toast.makeText(this, "请先与蓝牙打印机配对", Toast.LENGTH_LONG).show();
@@ -97,6 +106,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void print(String bdAddress) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.BLUETOOTH_CONNECT}, REQUEST_BLUETOOTH_PERMISSIONS);
+            Toast.makeText(this, "需要蓝牙权限以连接打印机", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         zpBluetoothPrinter zpSDK = new zpBluetoothPrinter(this);
         if (!zpSDK.connect(bdAddress)) {
             Toast.makeText(this, "连接失败", Toast.LENGTH_LONG).show();
@@ -135,6 +151,15 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.activity_main, menu);
         return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_BLUETOOTH_PERMISSIONS &&
+                grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            listBluetoothDevice();
+        }
     }
 
     private Bitmap drawableToBitmap(Drawable drawable) {
